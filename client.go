@@ -21,20 +21,25 @@ func NewClient(conf *Configuration) *Client {
 	return client
 }
 
-func (c *Client) assembleRequest(method, path string, body interface{}) *http.Request {
+func (c *Client) assembleRequest(method, path string, body interface{}) (*http.Request, error) {
 
 	url := c.conf.BaseUrl + path
-	req, _ := http.NewRequest(method, url, nil)
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		return nil, err
+	}
 	req.SetBasicAuth(c.conf.Username, c.conf.Password)
 	req.Header.Add("Content-Type", "application/xml")
 
 	if body != nil {
-		xmlbody, _ := xml.Marshal(body)
-		fmt.Println(string(xmlbody))
+		xmlbody, err := xml.Marshal(body)
+		if err != nil {
+			return nil, err
+		}
 		req.Body = ioutil.NopCloser(bytes.NewReader(xmlbody))
 	}
 
-	return req
+	return req, nil
 }
 
 func (c *Client) sendRequestAndGetResponse(req *http.Request, responseObject interface{}) error {
@@ -51,7 +56,7 @@ func (c *Client) sendRequestAndGetResponse(req *http.Request, responseObject int
 
 	fmt.Println(string(responseBytes))
 
-	xml.Unmarshal(responseBytes, responseObject)
+	xml.Unmarshal(responseBytes, &responseObject)
 	return nil
 }
 
@@ -61,38 +66,46 @@ func (c *Client) sendRequest(req *http.Request) error {
 	return err
 }
 
-func (c *Client) GetServers() (response.ServersListResponse, error) {
-	req := c.assembleRequest("GET", "/ve", nil)
+func (c *Client) GetServers() (*response.ServersListResponse, error) {
+	req, err := c.assembleRequest("GET", "/ve", nil)
+	if err != nil {
+		return nil, err
+	}
 
-	var serversList response.ServersListResponse
-	err := c.sendRequestAndGetResponse(req, &serversList)
+	var serversList *response.ServersListResponse
+	err = c.sendRequestAndGetResponse(req, serversList)
 
 	return serversList, err
 }
 
 func (c *Client) StartServer(name string) error {
 	path := fmt.Sprintf("/ve/%s/start", name)
-	req := c.assembleRequest("PUT", path, nil)
+	req, err := c.assembleRequest("PUT", path, nil)
+	if err != nil {
+		return err
+	}
 
-	err := c.sendRequest(req)
-
-	return err
+	return c.sendRequest(req)
 }
 
 func (c *Client) StopServer(name string) error {
 	path := fmt.Sprintf("/ve/%s/stop", name)
-	req := c.assembleRequest("PUT", path, nil)
+	req, err := c.assembleRequest("PUT", path, nil)
+	if err != nil {
+		return err
+	}
 
-	err := c.sendRequest(req)
-
-	return err
+	return c.sendRequest(req)
 }
 
-func (c *Client) CreateServer(server request.CreateServerRequest) (response.CreateServerResponse, error) {
-	req := c.assembleRequest("POST", "/ve", server)
+func (c *Client) CreateServer(server request.CreateServerRequest) (*response.CreateServerResponse, error) {
+	req, err := c.assembleRequest("POST", "/ve", server)
+	if err != nil {
+		return nil, err
+	}
 
-	var createServerResponse response.CreateServerResponse
-	err := c.sendRequestAndGetResponse(req, createServerResponse)
+	var createServerResponse *response.CreateServerResponse
+	err = c.sendRequestAndGetResponse(req, createServerResponse)
 
 	return createServerResponse, err
 }
