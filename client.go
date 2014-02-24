@@ -56,8 +56,9 @@ func (c *Client) sendRequestAndGetResponse(req *http.Request, responseObject int
 
 	fmt.Println(string(responseBytes))
 
-	xml.Unmarshal(responseBytes, &responseObject)
-	return nil
+	err = xml.Unmarshal(responseBytes, responseObject)
+	fmt.Println(responseObject)
+	return err
 }
 
 func (c *Client) sendRequest(req *http.Request) error {
@@ -73,7 +74,7 @@ func (c *Client) GetServers() (*response.ServersListResponse, error) {
 	}
 
 	var serversList *response.ServersListResponse
-	err = c.sendRequestAndGetResponse(req, serversList)
+	err = c.sendRequestAndGetResponse(req, &serversList)
 
 	return serversList, err
 }
@@ -105,7 +106,20 @@ func (c *Client) CreateServer(server request.CreateServerRequest) (*response.Cre
 	}
 
 	var createServerResponse *response.CreateServerResponse
-	err = c.sendRequestAndGetResponse(req, createServerResponse)
+	err = c.sendRequestAndGetResponse(req, &createServerResponse)
 
 	return createServerResponse, err
+}
+
+func (c *Client) ObtainServerInfo(name string) (*response.ObtainServerInfoResonse, error) {
+	path := fmt.Sprintf("/ve/%s", name)
+	req, err := c.assembleRequest("GET", path, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var obtainServerInfoResponse *response.ObtainServerInfoResonse
+	err = c.sendRequestAndGetResponse(req, &obtainServerInfoResponse)
+
+	return obtainServerInfoResponse, err
 }
