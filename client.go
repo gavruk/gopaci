@@ -42,14 +42,8 @@ func (c *Client) assembleRequest(method, path string, body interface{}) (*http.R
 	return req, nil
 }
 
-func (c *Client) sendRequestAndGetResponse(req *http.Request, responseObject interface{}) error {
-	client := http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-
-	responseBytes, err := ioutil.ReadAll(resp.Body)
+func (c *Client) sendRequestAndParseXml(req *http.Request, responseObject interface{}) error {
+	responseBytes, err := c.sendRequestAndGetResponse(req)
 	if err != nil {
 		return err
 	}
@@ -59,6 +53,21 @@ func (c *Client) sendRequestAndGetResponse(req *http.Request, responseObject int
 	err = xml.Unmarshal(responseBytes, responseObject)
 	fmt.Println(responseObject)
 	return err
+}
+
+func (c *Client) sendRequestAndGetResponse(req *http.Request) ([]byte, error) {
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	responseBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return responseBytes, nil
 }
 
 func (c *Client) sendRequest(req *http.Request) error {
@@ -74,7 +83,7 @@ func (c *Client) GetServers() (*response.ServersListResponse, error) {
 	}
 
 	var serversList *response.ServersListResponse
-	err = c.sendRequestAndGetResponse(req, &serversList)
+	err = c.sendRequestAndParseXml(req, &serversList)
 
 	return serversList, err
 }
@@ -106,7 +115,7 @@ func (c *Client) CreateServer(server request.CreateServerRequest) (*response.Cre
 	}
 
 	var createServerResponse *response.CreateServerResponse
-	err = c.sendRequestAndGetResponse(req, &createServerResponse)
+	err = c.sendRequestAndParseXml(req, &createServerResponse)
 
 	return createServerResponse, err
 }
@@ -119,7 +128,22 @@ func (c *Client) ObtainServerInfo(name string) (*response.ObtainServerInfoResons
 	}
 
 	var obtainServerInfoResponse *response.ObtainServerInfoResonse
-	err = c.sendRequestAndGetResponse(req, &obtainServerInfoResponse)
+	err = c.sendRequestAndParseXml(req, &obtainServerInfoResponse)
 
 	return obtainServerInfoResponse, err
+}
+
+func (c *Client) DeleteServer(name string) (string, error) {
+	path := fmt.Sprintf("/ve/%s", name)
+	req, err := c.assembleRequest("DELETE", path, nil)
+	if err != nil {
+		return "", err
+	}
+
+	var response []byte
+	response, err = c.sendRequestAndGetResponse(req)
+	if err != nil {
+		return "", err
+	}
+	return string(response), err
 }
